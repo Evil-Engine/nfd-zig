@@ -37,4 +37,27 @@ pub fn build(b: *std.Build) void {
         },
         else => @panic("Unsupported OS list of supported devices:\nwindows,\nlinux,\nmac"),
     }
+
+    const example = b.addExecutable(.{
+        .name = "Nfdzig-Example",
+        .root_module = b.addModule("nz-example", .{
+            .optimize = optimize,
+            .target = target,
+            .root_source_file = b.path("src/example.zig"),
+        }),
+    });
+
+    example.root_module.addImport("nfd", nfd_mod);
+
+    b.installArtifact(example);
+    const run_cmd = b.addRunArtifact(example);
+
+    run_cmd.step.dependOn(b.getInstallStep());
+
+    if (b.args) |args| {
+        run_cmd.addArgs(args);
+    }
+
+    const run_step = b.step("run", "Run the app");
+    run_step.dependOn(&run_cmd.step);
 }
