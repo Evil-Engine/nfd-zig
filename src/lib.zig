@@ -50,7 +50,9 @@ pub fn openFilesDialog(filter: ?[:0]const u8, default_path: ?[:0]const u8) !std.
         const path_ptr = c.NFD_PathSet_GetPath(&out_paths, i);
         if (path_ptr != null) {
             const path = std.mem.span(path_ptr);
-            try paths.append(std.heap.page_allocator, path);
+
+            const copied_path = try std.heap.page_allocator.dupe(u8, path);
+            try paths.append(std.heap.page_allocator, copied_path);
         }
     }
 
