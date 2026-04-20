@@ -29,6 +29,35 @@ pub fn openFileDialog(filter: ?[:0]const u8, default_path: ?[:0]const u8) Error!
     };
 }
 
+/// Open multiple file dialog
+/// Make sure to call freePaths on it
+pub fn openFilesDialog(filter: ?[:0]const u8, default_path: ?[:0]const u8) !std.ArrayList([]const u8) {
+    var out_paths: ?[*c]c.nfdpathset_t = null;
+
+    // allocates using malloc
+    const result = c.NFD_OpenDialogMultiple(if (filter != null) filter.? else null, if (default_path != null) default_path.? else null, &out_paths);
+
+    if (result == c.NFD_ERROR) {
+        return makeError();
+    }
+
+    const path_count = c.NFD_PathSet_GetCount(out_paths);
+
+    var paths = try std.ArrayList([]const u8).initCapacity(std.heap.page_allocator, 1);
+
+    for (0..path_count) |i| {
+        const path_ptr = c.NFD_PathSet_GetPath(out_paths, i);
+        if (path_ptr != null) {
+            const path = std.mem.span(path_ptr);
+            try paths.append(std.heap.page_allocator, path);
+        }
+    }
+
+    c.NFD_PathSet_Free(out_paths);
+
+    return paths;
+}
+
 /// Open save dialog
 pub fn saveFileDialog(filter: ?[:0]const u8, default_path: ?[:0]const u8) Error!?[:0]const u8 {
     var out_path: [*c]u8 = null;
@@ -59,4 +88,8 @@ pub fn openFolderDialog(default_path: ?[:0]const u8) Error!?[:0]const u8 {
 
 pub fn freePath(path: []const u8) void {
     std.c.free(@constCast(path.ptr));
+}
+
+pub fn freePaths(paths: std.ArrayList([]const u8)) void {
+    paths.deinit();
 }
